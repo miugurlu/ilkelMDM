@@ -11,6 +11,34 @@ struct ContentView: View {
     @StateObject private var viewModel = DeviceViewModel()
 
     var body: some View {
+        if viewModel.isUnlocked {
+            dashboardView
+        } else {
+            lockScreenView
+        }
+    }
+
+    private var lockScreenView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.secondary)
+            Text("Device Inventory")
+                .font(.title2.weight(.semibold))
+            Text("Giriş yapmak için Face ID veya Touch ID kullanın")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.background)
+        .onAppear {
+            viewModel.authenticate()
+        }
+    }
+
+    private var dashboardView: some View {
         NavigationStack {
             List {
                 identitySection

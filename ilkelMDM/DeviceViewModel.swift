@@ -10,6 +10,8 @@ import CoreTelephony
 import Foundation
 import Network
 import UIKit
+import LocalAuthentication
+import SwiftUI
 
 // MARK: - Device ViewModel
 
@@ -25,6 +27,7 @@ final class DeviceViewModel: ObservableObject {
     @Published private(set) var carrierName: String = "—"
     @Published private(set) var isoCountryCode: String = "—"
     @Published private(set) var orientation: UIDeviceOrientation = .unknown
+    @Published var isUnlocked = false
 
     // MARK: - Identity & Hardware (UIDevice + machine id)
 
@@ -136,6 +139,12 @@ final class DeviceViewModel: ObservableObject {
         startNetworkMonitoring()
         updateCarrierInfo()
 
+        // Carrier info loads asynchronously; retry after delay (SIM detection can be delayed)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            updateCarrierInfo()
+        }
+
         // Orientation (must begin generating to receive updates)
         device.beginGeneratingDeviceOrientationNotifications()
         orientation = device.orientation
@@ -221,12 +230,19 @@ final class DeviceViewModel: ObservableObject {
     }
 
     private static func diskSpace(fileManager: FileManager) -> (total: String, free: String) {
-        guard let attrs = try? fileManager.attributesOfFileSystem(forPath: NSHomeDirectory() as String),
-              let total = attrs[.systemSize] as? Int64,
-              let free = attrs[.systemFreeSize] as? Int64 else {
-            return ("—", "—")
+        let homeURL = URL(fileURLWithPath: NSHomeDirectory())
+        guard let values = try? homeURL.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]),
+              let total = values.volumeTotalCapacity,
+              let free = values.volumeAvailableCapacityForImportantUsage else {
+            // Fallback: attributesOfFileSystem (may report different values on some configurations)
+            guard let attrs = try? fileManager.attributesOfFileSystem(forPath: NSHomeDirectory() as String),
+                  let total = attrs[.systemSize] as? Int64,
+                  let free = attrs[.systemFreeSize] as? Int64 else {
+                return ("—", "—")
+            }
+            return (formatBytes(Int64(total)), formatBytes(free))
         }
-        return (formatBytes(total), formatBytes(free))
+        return (formatBytes(Int64(total)), formatBytes(free))
     }
 
     // MARK: - Display helpers for UI
@@ -292,6 +308,31 @@ final class DeviceViewModel: ObservableObject {
         case .faceUp: return "Face Up"
         case .faceDown: return "Face Down"
         @unknown default: return "Unknown"
+        }
+    }
+    
+    func authenticate() {
+        let context = LAContext()
+        var error: NSError?
+
+        let reason = "Device Inventory'e erişmek için kimliğinizi doğrulayın"
+
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { [weak self] success, _ in
+                Task { @MainActor in
+                    self?.isUnlocked = success
+                }
+            }
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            // Biyometri yok; cihaz şifresi ile dene
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { [weak self] success, _ in
+                Task { @MainActor in
+                    self?.isUnlocked = success
+                }
+            }
+        } else {
+            // Simülatör veya kimlik doğrulama yok; erişime izin ver
+            isUnlocked = true
         }
     }
 }
