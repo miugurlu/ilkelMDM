@@ -57,6 +57,7 @@ final class DeviceViewModel: ObservableObject {
     private let fileManager: FileManager
     private var pathMonitor: NWPathMonitor?
     private var monitorQueue: DispatchQueue?
+    private let mqttService = MQTTService()
 
     init(
         device: UIDevice = .current,
@@ -143,7 +144,10 @@ final class DeviceViewModel: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             updateCarrierInfo()
+            publishToMQTT()
         }
+
+        publishToMQTT()
 
         // Orientation (must begin generating to receive updates)
         device.beginGeneratingDeviceOrientationNotifications()
@@ -165,6 +169,45 @@ final class DeviceViewModel: ObservableObject {
         pathMonitor = nil
         monitorQueue = nil
         device.endGeneratingDeviceOrientationNotifications()
+        mqttService.disconnect()
+    }
+
+    // MARK: - MQTT
+
+    private func publishToMQTT() {
+        let payload = DeviceInventoryPayload(
+            identity: .init(
+                deviceName: deviceName,
+                systemName: systemName,
+                systemVersion: systemVersion,
+                model: model,
+                localizedModel: localizedModel,
+                userInterfaceIdiom: userInterfaceIdiomText,
+                identifierForVendor: identifierForVendor,
+                machineIdentifier: machineIdentifier,
+                isMultiTaskingSupported: isMultiTaskingSupported
+            ),
+            resources: .init(
+                physicalMemoryGB: physicalMemoryGB,
+                processorCountActive: processorCountActive,
+                processorCountTotal: processorCountTotal,
+                systemUptime: systemUptimeFormatted,
+                totalDiskSpaceGB: totalDiskSpaceGB,
+                freeDiskSpaceGB: freeDiskSpaceGB
+            ),
+            power: .init(
+                batteryLevel: batteryLevelText,
+                batteryState: batteryStateText,
+                thermalState: thermalStateText,
+                orientation: orientationText
+            ),
+            network: .init(
+                connectionType: connectionType,
+                carrierName: carrierName,
+                isoCountryCode: isoCountryCode
+            )
+        )
+        mqttService.publish(payload)
     }
 
     // MARK: - Battery & thermal (main queue)

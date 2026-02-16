@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AB68936F2F4305A300491C1F /* CocoaMQTT in Frameworks */ = {isa = PBXBuildFile; productRef = AB68936E2F4305A300491C1F /* CocoaMQTT */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		AB18AF2A2F3B256100DE374C /* ilkelMDM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ilkelMDM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB68936F2F4305A300491C1F /* CocoaMQTT in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = ilkelMDM;
 			packageProductDependencies = (
+				AB68936E2F4305A300491C1F /* CocoaMQTT */,
 			);
 			productName = ilkelMDM;
 			productReference = AB18AF2A2F3B256100DE374C /* ilkelMDM.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = AB18AF212F3B256100DE374C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AB68936D2F4305A300491C1F /* XCRemoteSwiftPackageReference "CocoaMQTT" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AB18AF2B2F3B256100DE374C /* Products */;
 			projectDirPath = "";
@@ -257,6 +266,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -290,6 +300,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -334,6 +345,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AB68936D2F4305A300491C1F /* XCRemoteSwiftPackageReference "CocoaMQTT" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ciospettw/CocoaMQTT";
+			requirement = {
+				kind = revision;
+				revision = 511a205c8dddffed065059e1d2c712bb20cd949d;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AB68936E2F4305A300491C1F /* CocoaMQTT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB68936D2F4305A300491C1F /* XCRemoteSwiftPackageReference "CocoaMQTT" */;
+			productName = CocoaMQTT;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AB18AF222F3B256100DE374C /* Project object */;
 }
