@@ -44,6 +44,7 @@ struct ContentView: View {
                 identitySection
                 resourcesSection
                 powerAndEnvironmentSection
+                locationSection
                 networkSection
             }
             .navigationTitle("Device Inventory")
@@ -108,13 +109,19 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Location
+
+    private var locationSection: some View {
+        Section("Location") {
+            InfoRow(title: "Coordinates", value: viewModel.locationText)
+        }
+    }
+
     // MARK: - Network & Connectivity
 
     private var networkSection: some View {
         Section("Network & Connectivity") {
             InfoRow(title: "Connection Type", value: viewModel.connectionType)
-            InfoRow(title: "Carrier Name", value: viewModel.carrierName)
-            InfoRow(title: "ISO Country Code", value: viewModel.isoCountryCode)
         }
     }
 }

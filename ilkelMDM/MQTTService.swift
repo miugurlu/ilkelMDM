@@ -15,6 +15,7 @@ struct DeviceInventoryPayload: Codable {
     let resources: Resources
     let power: Power
     let network: Network
+    let location: Location?
 
     struct Identity: Codable {
         let deviceName: String
@@ -46,8 +47,13 @@ struct DeviceInventoryPayload: Codable {
 
     struct Network: Codable {
         let connectionType: String
-        let carrierName: String
-        let isoCountryCode: String
+    }
+
+    struct Location: Codable {
+        let latitude: Double
+        let longitude: Double
+        let altitude: Double?
+        let timestamp: String
     }
 }
 

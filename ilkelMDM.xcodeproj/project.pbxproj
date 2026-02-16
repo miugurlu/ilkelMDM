@@ -266,6 +266,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Konum bilgisi MDM envanterine dahil edilmek üzere kullanılır.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -300,6 +301,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Konum bilgisi MDM envanterine dahil edilmek üzere kullanılır.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

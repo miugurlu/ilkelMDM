@@ -6,6 +6,7 @@
 //
 
 import Combine
+import CoreLocation
 import CoreTelephony
 import Foundation
 import Network
@@ -16,7 +17,7 @@ import SwiftUI
 // MARK: - Device ViewModel
 
 @MainActor
-final class DeviceViewModel: ObservableObject {
+final class DeviceViewModel: NSObject, ObservableObject {
 
     // MARK: - Published (dynamic / live data)
 
@@ -24,10 +25,12 @@ final class DeviceViewModel: ObservableObject {
     @Published private(set) var batteryState: UIDevice.BatteryState = .unknown
     @Published private(set) var thermalState: ProcessInfo.ThermalState = .nominal
     @Published private(set) var connectionType: String = "—"
-    @Published private(set) var carrierName: String = "—"
-    @Published private(set) var isoCountryCode: String = "—"
     @Published private(set) var orientation: UIDeviceOrientation = .unknown
     @Published var isUnlocked = false
+    @Published private(set) var latitude: Double?
+    @Published private(set) var longitude: Double?
+    @Published private(set) var altitude: Double?
+    @Published private(set) var locationTimestamp: Date?
 
     // MARK: - Identity & Hardware (UIDevice + machine id)
 
@@ -58,6 +61,8 @@ final class DeviceViewModel: ObservableObject {
     private var pathMonitor: NWPathMonitor?
     private var monitorQueue: DispatchQueue?
     private let mqttService = MQTTService()
+    private let locationManager = CLLocationManager()
+    private var hasPublishedWithLocation = false
 
     init(
         device: UIDevice = .current,
@@ -80,7 +85,6 @@ final class DeviceViewModel: ObservableObject {
         self.isMultiTaskingSupported = device.isMultitaskingSupported
 
         // Resources
-        let bytesPerGB: Int64 = 1_073_741_824
         let physicalMemoryBytes = Int64(processInfo.physicalMemory)
         self.physicalMemoryGB = formatBytes(physicalMemoryBytes)
         self.processorCountActive = processInfo.activeProcessorCount
@@ -95,6 +99,8 @@ final class DeviceViewModel: ObservableObject {
         self.batteryState = device.batteryState
         self.thermalState = processInfo.thermalState
         self.orientation = device.orientation
+
+        super.init()
     }
 
     /// Enables battery monitoring and subscribes to battery, thermal, and network updates.
@@ -138,12 +144,11 @@ final class DeviceViewModel: ObservableObject {
         }
 
         startNetworkMonitoring()
-        updateCarrierInfo()
+        startLocationUpdates()
 
         // Carrier info loads asynchronously; retry after delay (SIM detection can be delayed)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            updateCarrierInfo()
             publishToMQTT()
         }
 
@@ -169,12 +174,34 @@ final class DeviceViewModel: ObservableObject {
         pathMonitor = nil
         monitorQueue = nil
         device.endGeneratingDeviceOrientationNotifications()
+        locationManager.stopUpdatingLocation()
         mqttService.disconnect()
+    }
+
+    // MARK: - Location
+
+    private func startLocationUpdates() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = 10
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
     }
 
     // MARK: - MQTT
 
     private func publishToMQTT() {
+        let loc: DeviceInventoryPayload.Location? = {
+            guard let lat = latitude, let lon = longitude else { return nil }
+            let formatter = ISO8601DateFormatter()
+            return .init(
+                latitude: lat,
+                longitude: lon,
+                altitude: altitude,
+                timestamp: formatter.string(from: locationTimestamp ?? Date())
+            )
+        }()
+
         let payload = DeviceInventoryPayload(
             identity: .init(
                 deviceName: deviceName,
@@ -202,10 +229,9 @@ final class DeviceViewModel: ObservableObject {
                 orientation: orientationText
             ),
             network: .init(
-                connectionType: connectionType,
-                carrierName: carrierName,
-                isoCountryCode: isoCountryCode
-            )
+                connectionType: connectionType
+            ),
+            location: loc
         )
         mqttService.publish(payload)
     }
@@ -246,21 +272,6 @@ final class DeviceViewModel: ObservableObject {
         if path.usesInterfaceType(.cellular) { return "Cellular" }
         if path.usesInterfaceType(.wiredEthernet) { return "Ethernet" }
         return "Connected"
-    }
-
-    // MARK: - Carrier (CoreTelephony)
-
-    private func updateCarrierInfo() {
-        let info = CTTelephonyNetworkInfo()
-        // Prefer iOS 16+ API; fallback for older if needed.
-        if let providers = info.serviceSubscriberCellularProviders,
-           let first = providers.values.first {
-            carrierName = first.carrierName ?? "—"
-            isoCountryCode = first.isoCountryCode ?? "—"
-        } else {
-            carrierName = "—"
-            isoCountryCode = "—"
-        }
     }
 
     // MARK: - Helpers
@@ -354,6 +365,12 @@ final class DeviceViewModel: ObservableObject {
         }
     }
     
+    /// Human-readable location (for UI display).
+    var locationText: String {
+        guard let lat = latitude, let lon = longitude else { return "—" }
+        return String(format: "%.6f, %.6f", lat, lon)
+    }
+
     func authenticate() {
         let context = LAContext()
         var error: NSError?
@@ -377,5 +394,27 @@ final class DeviceViewModel: ObservableObject {
             // Simülatör veya kimlik doğrulama yok; erişime izin ver
             isUnlocked = true
         }
+    }
+}
+
+// MARK: - CLLocationManagerDelegate
+
+extension DeviceViewModel: CLLocationManagerDelegate {
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        Task { @MainActor in
+            latitude = location.coordinate.latitude
+            longitude = location.coordinate.longitude
+            altitude = location.altitude
+            locationTimestamp = location.timestamp
+            if !hasPublishedWithLocation {
+                hasPublishedWithLocation = true
+                publishToMQTT()
+            }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // İzin reddedildi veya konum alınamadı; latitude/longitude nil kalır
     }
 }
