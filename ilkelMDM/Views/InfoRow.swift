@@ -25,7 +25,7 @@ struct InfoRow: View {
 
 #Preview {
     List {
-        InfoRow(title: "Device Name", value: "İbrahim’s iPhone")
+        InfoRow(title: "Device Name", value: "İbrahim's iPhone")
         InfoRow(title: "Model", value: "iPhone15,3")
     }
 }

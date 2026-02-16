@@ -85,7 +85,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Live Power & Environment (with thermal warning)
+    // MARK: - Power & Environment
 
     private var powerAndEnvironmentSection: some View {
         Section {

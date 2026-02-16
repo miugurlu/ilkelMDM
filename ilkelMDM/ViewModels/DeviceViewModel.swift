@@ -11,13 +11,10 @@ import CoreTelephony
 import Foundation
 import Network
 import UIKit
-import LocalAuthentication
 import SwiftUI
 
-// MARK: - Device ViewModel
-
 @MainActor
-final class DeviceViewModel: NSObject, ObservableObject {
+final class DeviceViewModel: ObservableObject {
 
     // MARK: - Published (dynamic / live data)
 
@@ -53,7 +50,7 @@ final class DeviceViewModel: NSObject, ObservableObject {
     let totalDiskSpaceGB: String
     let freeDiskSpaceGB: String
 
-    // MARK: - Dependencies (injectable for tests)
+    // MARK: - Dependencies
 
     private let device: UIDevice
     private let processInfo: ProcessInfo
@@ -61,7 +58,8 @@ final class DeviceViewModel: NSObject, ObservableObject {
     private var pathMonitor: NWPathMonitor?
     private var monitorQueue: DispatchQueue?
     private let mqttService = MQTTService()
-    private let locationManager = CLLocationManager()
+    private let authService = AuthService()
+    private let locationService = LocationService()
     private var hasPublishedWithLocation = false
 
     init(
@@ -73,7 +71,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         self.processInfo = processInfo
         self.fileManager = fileManager
 
-        // Identity & Hardware (name: iOS 16+ gives generic name; real name needs entitlement)
         self.deviceName = device.name
         self.systemName = device.systemName
         self.systemVersion = device.systemVersion
@@ -84,33 +81,26 @@ final class DeviceViewModel: NSObject, ObservableObject {
         self.machineIdentifier = getMachineIdentifier()
         self.isMultiTaskingSupported = device.isMultitaskingSupported
 
-        // Resources
         let physicalMemoryBytes = Int64(processInfo.physicalMemory)
         self.physicalMemoryGB = formatBytes(physicalMemoryBytes)
         self.processorCountActive = processInfo.activeProcessorCount
         self.processorCountTotal = processInfo.processorCount
-        self.systemUptimeFormatted = Self.formatUptime(processInfo.systemUptime)
-        let (total, free) = Self.diskSpace(fileManager: fileManager)
+        self.systemUptimeFormatted = formatUptime(processInfo.systemUptime)
+        let (total, free) = diskSpace(fileManager: fileManager)
         self.totalDiskSpaceGB = total
         self.freeDiskSpaceGB = free
 
-        // Live values will be set in startMonitoring()
         self.batteryLevel = device.batteryLevel
         self.batteryState = device.batteryState
         self.thermalState = processInfo.thermalState
         self.orientation = device.orientation
-
-        super.init()
     }
 
-    /// Enables battery monitoring and subscribes to battery, thermal, and network updates.
-    /// Call once when the dashboard appears (e.g. in .onAppear).
     func startMonitoring() {
         device.isBatteryMonitoringEnabled = true
         updateBatteryFromDevice()
         updateThermalFromProcessInfo()
 
-        // Battery level
         NotificationCenter.default.addObserver(
             forName: UIDevice.batteryLevelDidChangeNotification,
             object: nil,
@@ -121,7 +111,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
             }
         }
 
-        // Battery state
         NotificationCenter.default.addObserver(
             forName: UIDevice.batteryStateDidChangeNotification,
             object: nil,
@@ -132,7 +121,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
             }
         }
 
-        // Thermal state
         NotificationCenter.default.addObserver(
             forName: ProcessInfo.thermalStateDidChangeNotification,
             object: nil,
@@ -146,7 +134,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         startNetworkMonitoring()
         startLocationUpdates()
 
-        // Carrier info loads asynchronously; retry after delay (SIM detection can be delayed)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             publishToMQTT()
@@ -154,7 +141,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
 
         publishToMQTT()
 
-        // Orientation (must begin generating to receive updates)
         device.beginGeneratingDeviceOrientationNotifications()
         orientation = device.orientation
         NotificationCenter.default.addObserver(
@@ -168,24 +154,36 @@ final class DeviceViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Stops network monitoring and orientation updates. Call on disappear if desired.
     func stopMonitoring() {
         pathMonitor?.cancel()
         pathMonitor = nil
         monitorQueue = nil
         device.endGeneratingDeviceOrientationNotifications()
-        locationManager.stopUpdatingLocation()
+        locationService.stop()
         mqttService.disconnect()
+    }
+
+    func authenticate() {
+        authService.authenticate { [weak self] success in
+            self?.isUnlocked = success
+        }
     }
 
     // MARK: - Location
 
     private func startLocationUpdates() {
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 10
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
+        locationService.onLocationUpdate = { [weak self] location in
+            guard let self = self else { return }
+            latitude = location.coordinate.latitude
+            longitude = location.coordinate.longitude
+            altitude = location.altitude
+            locationTimestamp = location.timestamp
+            if !hasPublishedWithLocation {
+                hasPublishedWithLocation = true
+                publishToMQTT()
+            }
+        }
+        locationService.start()
     }
 
     // MARK: - MQTT
@@ -236,7 +234,7 @@ final class DeviceViewModel: NSObject, ObservableObject {
         mqttService.publish(payload)
     }
 
-    // MARK: - Battery & thermal (main queue)
+    // MARK: - Battery & thermal
 
     private func updateBatteryFromDevice() {
         batteryLevel = device.batteryLevel
@@ -261,10 +259,10 @@ final class DeviceViewModel: NSObject, ObservableObject {
             }
         }
         monitor.start(queue: queue)
-
-        // Initial value
         connectionType = Self.connectionType(from: monitor.currentPath)
     }
+
+    // MARK: - Network Connection
 
     private static func connectionType(from path: NWPath) -> String {
         guard path.status == .satisfied else { return "No Connection" }
@@ -274,40 +272,13 @@ final class DeviceViewModel: NSObject, ObservableObject {
         return "Connected"
     }
 
-    // MARK: - Helpers
+    // MARK: - Display helpers
 
-    private static func formatUptime(_ seconds: TimeInterval) -> String {
-        let totalSeconds = Int(seconds)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        return String(format: "%d h %d min", hours, minutes)
-    }
-
-    private static func diskSpace(fileManager: FileManager) -> (total: String, free: String) {
-        let homeURL = URL(fileURLWithPath: NSHomeDirectory())
-        guard let values = try? homeURL.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]),
-              let total = values.volumeTotalCapacity,
-              let free = values.volumeAvailableCapacityForImportantUsage else {
-            // Fallback: attributesOfFileSystem (may report different values on some configurations)
-            guard let attrs = try? fileManager.attributesOfFileSystem(forPath: NSHomeDirectory() as String),
-                  let total = attrs[.systemSize] as? Int64,
-                  let free = attrs[.systemFreeSize] as? Int64 else {
-                return ("—", "—")
-            }
-            return (formatBytes(Int64(total)), formatBytes(free))
-        }
-        return (formatBytes(Int64(total)), formatBytes(free))
-    }
-
-    // MARK: - Display helpers for UI
-
-    /// Battery level string; handles -1.0 (unknown) gracefully.
     var batteryLevelText: String {
         if batteryLevel < 0 { return "Unknown" }
         return String(format: "%.0f%%", batteryLevel * 100)
     }
 
-    /// Human-readable battery state.
     var batteryStateText: String {
         switch batteryState {
         case .unknown: return "Unknown"
@@ -318,7 +289,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Human-readable thermal state.
     var thermalStateText: String {
         switch thermalState {
         case .nominal: return "Nominal"
@@ -329,7 +299,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// True when thermal state is serious or critical (for warning badge).
     var isThermalWarning: Bool {
         switch thermalState {
         case .serious, .critical: return true
@@ -337,7 +306,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Human-readable interface idiom.
     var userInterfaceIdiomText: String {
         switch userInterfaceIdiom {
         case .unspecified: return "Unspecified"
@@ -351,7 +319,6 @@ final class DeviceViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Human-readable orientation.
     var orientationText: String {
         switch orientation {
         case .unknown: return "Unknown"
@@ -364,57 +331,9 @@ final class DeviceViewModel: NSObject, ObservableObject {
         @unknown default: return "Unknown"
         }
     }
-    
-    /// Human-readable location (for UI display).
+
     var locationText: String {
         guard let lat = latitude, let lon = longitude else { return "—" }
         return String(format: "%.6f, %.6f", lat, lon)
-    }
-
-    func authenticate() {
-        let context = LAContext()
-        var error: NSError?
-
-        let reason = "Device Inventory'e erişmek için kimliğinizi doğrulayın"
-
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { [weak self] success, _ in
-                Task { @MainActor in
-                    self?.isUnlocked = success
-                }
-            }
-        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
-            // Biyometri yok; cihaz şifresi ile dene
-            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { [weak self] success, _ in
-                Task { @MainActor in
-                    self?.isUnlocked = success
-                }
-            }
-        } else {
-            // Simülatör veya kimlik doğrulama yok; erişime izin ver
-            isUnlocked = true
-        }
-    }
-}
-
-// MARK: - CLLocationManagerDelegate
-
-extension DeviceViewModel: CLLocationManagerDelegate {
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        Task { @MainActor in
-            latitude = location.coordinate.latitude
-            longitude = location.coordinate.longitude
-            altitude = location.altitude
-            locationTimestamp = location.timestamp
-            if !hasPublishedWithLocation {
-                hasPublishedWithLocation = true
-                publishToMQTT()
-            }
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // İzin reddedildi veya konum alınamadı; latitude/longitude nil kalır
     }
 }
