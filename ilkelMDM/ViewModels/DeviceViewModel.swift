@@ -7,7 +7,6 @@
 
 import Combine
 import CoreLocation
-import CoreTelephony
 import Foundation
 import Network
 import UIKit
@@ -57,10 +56,10 @@ final class DeviceViewModel: ObservableObject {
     private let fileManager: FileManager
     private var pathMonitor: NWPathMonitor?
     private var monitorQueue: DispatchQueue?
-    private let mqttService = MQTTService()
+    private let tcpService = TCPService()
     private let authService = AuthService()
     private let locationService = LocationService()
-    private var hasPublishedWithLocation = false
+    private var hasSentWithLocation = false
 
     init(
         device: UIDevice = .current,
@@ -136,10 +135,10 @@ final class DeviceViewModel: ObservableObject {
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            publishToMQTT()
+            sendToServer()
         }
 
-        publishToMQTT()
+        sendToServer()
 
         device.beginGeneratingDeviceOrientationNotifications()
         orientation = device.orientation
@@ -160,7 +159,7 @@ final class DeviceViewModel: ObservableObject {
         monitorQueue = nil
         device.endGeneratingDeviceOrientationNotifications()
         locationService.stop()
-        mqttService.disconnect()
+        tcpService.disconnect()
     }
 
     func authenticate() {
@@ -178,17 +177,17 @@ final class DeviceViewModel: ObservableObject {
             longitude = location.coordinate.longitude
             altitude = location.altitude
             locationTimestamp = location.timestamp
-            if !hasPublishedWithLocation {
-                hasPublishedWithLocation = true
-                publishToMQTT()
+            if !hasSentWithLocation {
+                hasSentWithLocation = true
+                sendToServer()
             }
         }
         locationService.start()
     }
 
-    // MARK: - MQTT
+    // MARK: - TCP Send
 
-    private func publishToMQTT() {
+    private func sendToServer() {
         let loc: DeviceInventoryPayload.Location? = {
             guard let lat = latitude, let lon = longitude else { return nil }
             let formatter = ISO8601DateFormatter()
@@ -201,6 +200,7 @@ final class DeviceViewModel: ObservableObject {
         }()
 
         let payload = DeviceInventoryPayload(
+            deviceId: identifierForVendor,
             identity: .init(
                 deviceName: deviceName,
                 systemName: systemName,
@@ -226,12 +226,10 @@ final class DeviceViewModel: ObservableObject {
                 thermalState: thermalStateText,
                 orientation: orientationText
             ),
-            network: .init(
-                connectionType: connectionType
-            ),
+            network: .init(connectionType: connectionType),
             location: loc
         )
-        mqttService.publish(payload)
+        tcpService.send(payload)
     }
 
     // MARK: - Battery & thermal

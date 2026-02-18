@@ -7,8 +7,9 @@
 
 import Foundation
 
-enum MQTTConfig {
-    static let host = "broker.hivemq.com"
-    static let port: UInt16 = 1883
-    static let topic = "ilkelMDM/device/inventory"
+enum TCPConfig {
+    /// Hedef host
+    static let host = "localhost"
+    /// Hedef port
+    static let port: UInt16 = 8080
 }

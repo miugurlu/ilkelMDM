@@ -2,12 +2,14 @@
 //  DeviceInventoryPayload.swift
 //  ilkelMDM
 //
-//  MQTT payload model for device inventory JSON.
+//  Device inventory model - Java DeviceLog entity ile uyumlu JSON.
 //
 
 import Foundation
 
+/// Java DeviceLog entity ile uyumlu TCP gönderim modeli.
 struct DeviceInventoryPayload: Codable {
+    let deviceId: String
     let identity: Identity
     let resources: Resources
     let power: Power
