@@ -59,7 +59,8 @@ final class DeviceViewModel: ObservableObject {
     private let tcpService = TCPService()
     private let authService = AuthService()
     private let locationService = LocationService()
-    private var hasSentWithLocation = false
+    private var hasSentToServer = false
+    private let locationWaitTimeoutSeconds: UInt64 = 10
 
     init(
         device: UIDevice = .current,
@@ -132,13 +133,7 @@ final class DeviceViewModel: ObservableObject {
 
         startNetworkMonitoring()
         startLocationUpdates()
-
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            sendToServer()
-        }
-
-        sendToServer()
+        scheduleSendWithLocationTimeout()
 
         device.beginGeneratingDeviceOrientationNotifications()
         orientation = device.orientation
@@ -177,12 +172,23 @@ final class DeviceViewModel: ObservableObject {
             longitude = location.coordinate.longitude
             altitude = location.altitude
             locationTimestamp = location.timestamp
-            if !hasSentWithLocation {
-                hasSentWithLocation = true
+            if !hasSentToServer {
+                hasSentToServer = true
                 sendToServer()
             }
         }
         locationService.start()
+    }
+
+    /// Konum gelene kadar bekler; gelmezse timeout (10 sn) sonunda konum olmadan gönderir.
+    private func scheduleSendWithLocationTimeout() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: locationWaitTimeoutSeconds * 1_000_000_000)
+            if !hasSentToServer {
+                hasSentToServer = true
+                sendToServer()
+            }
+        }
     }
 
     // MARK: - TCP Send
