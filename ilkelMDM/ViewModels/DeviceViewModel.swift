@@ -197,6 +197,7 @@ final class DeviceViewModel: ObservableObject {
         let loc: DeviceInventoryPayload.Location? = {
             guard let lat = latitude, let lon = longitude else { return nil }
             let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             return .init(
                 latitude: lat,
                 longitude: lon,
@@ -206,7 +207,6 @@ final class DeviceViewModel: ObservableObject {
         }()
 
         let payload = DeviceInventoryPayload(
-            deviceId: identifierForVendor,
             identity: .init(
                 deviceName: deviceName,
                 systemName: systemName,

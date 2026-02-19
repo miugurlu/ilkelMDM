@@ -9,7 +9,6 @@ import Foundation
 
 /// Java DeviceLog entity ile uyumlu TCP gönderim modeli.
 struct DeviceInventoryPayload: Codable {
-    let deviceId: String
     let identity: Identity
     let resources: Resources
     let power: Power
