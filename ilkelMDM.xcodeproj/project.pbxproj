@@ -6,16 +6,26 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		AB18AF2A2F3B256100DE374C /* ilkelMDM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ilkelMDM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AB5B62492F501E2F00469C63 /* Exceptions for "ilkelMDM" folder in "ilkelMDM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AB18AF292F3B256100DE374C /* ilkelMDM */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AB18AF2C2F3B256100DE374C /* ilkelMDM */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB5B62492F501E2F00469C63 /* Exceptions for "ilkelMDM" folder in "ilkelMDM" target */,
+			);
 			path = ilkelMDM;
 			sourceTree = "<group>";
 		};
@@ -256,11 +266,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ilkelMDM/ilkelMDM.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5CVC747G34;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ilkelMDM/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Konum bilgisi MDM envanterine dahil edilmek üzere kullanılır.";
@@ -291,11 +303,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ilkelMDM/ilkelMDM.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5CVC747G34;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ilkelMDM/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We need FaceID ";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Lazım";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Konum bilgisi MDM envanterine dahil edilmek üzere kullanılır.";
@@ -343,12 +357,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AB18AF222F3B256100DE374C /* Project object */;
 }
