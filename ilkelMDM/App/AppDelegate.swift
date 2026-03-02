@@ -21,8 +21,9 @@ public class AppDelegate: NSObject, UIApplicationDelegate{
         print("[APNs] Device token alındı: \(tokenString.prefix(20))...")
 
         let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? ""
+        let payload = TokenRegistrationPayload.registerToken(deviceId: deviceId, deviceToken: tokenString)
         let tcp = TCPService()
-        tcp.sendTokenRegistration(deviceId: deviceId, token: tokenString) { success in
+        tcp.send(payload) { success in
             if success {
                 print("[APNs] Token gönderildi.")
             } else {

@@ -22,6 +22,7 @@ enum BackgroundPayloadBuilder {
         let connectionType = currentConnectionType()
 
         return DeviceInventoryPayload(
+            type: "device_inventory",
             identity: .init(
                 deviceName: device.name,
                 systemName: device.systemName,

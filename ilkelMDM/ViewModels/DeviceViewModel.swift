@@ -207,6 +207,7 @@ final class DeviceViewModel: ObservableObject {
         }()
 
         let payload = DeviceInventoryPayload(
+            type: "device_inventory",
             identity: .init(
                 deviceName: deviceName,
                 systemName: systemName,

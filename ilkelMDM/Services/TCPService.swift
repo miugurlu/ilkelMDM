@@ -39,7 +39,8 @@ final class TCPService {
     }
 
     /// JSON'ı encode edip sonuna newline (\n) ekleyerek gönderir (Java readLine() uyumlu).
-    func send(_ payload: DeviceInventoryPayload, completion: ((Bool) -> Void)? = nil) {
+    /// DeviceInventoryPayload ve TokenRegistrationPayload aynı metodu kullanır.
+    func send<T: Encodable>(_ payload: T, completion: ((Bool) -> Void)? = nil) {
         guard let jsonData = try? JSONEncoder().encode(payload),
               var jsonString = String(data: jsonData, encoding: .utf8) else {
             print("[TCP] JSON encode hatası")
@@ -62,35 +63,6 @@ final class TCPService {
         connection?.send(content: data, completion: .contentProcessed { error in
             if let error = error {
                 print("[TCP] Gönderim hatası: \(error.localizedDescription)")
-            }
-            completion?(error == nil)
-        })
-    }
-
-    /// Push token kaydı: aynı TCP adresine tek satır JSON gönderir.
-    /// Backend gelen satırda `type: "register_token"` görürse device_tokens'a yazar (device_logs değil).
-    func sendTokenRegistration(deviceId: String, token: String, completion: ((Bool) -> Void)? = nil) {
-        let body: [String: String] = [
-            "type": "register_token",
-            "deviceId": deviceId,
-            "deviceToken": token
-        ]
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: body),
-              var jsonString = String(data: jsonData, encoding: .utf8) else {
-            print("[TCP] Token JSON encode hatası")
-            completion?(false)
-            return
-        }
-        jsonString += "\n"
-
-        guard let data = jsonString.data(using: .utf8), connection != nil else {
-            completion?(false)
-            return
-        }
-
-        connection?.send(content: data, completion: .contentProcessed { error in
-            if let error = error {
-                print("[TCP] Token gönderim hatası: \(error.localizedDescription)")
             }
             completion?(error == nil)
         })

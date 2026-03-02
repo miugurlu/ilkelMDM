@@ -8,7 +8,9 @@
 import Foundation
 
 /// Java DeviceLog entity ile uyumlu TCP gönderim modeli.
+/// Backend `type` alanına bakarak device_logs'a yazar.
 struct DeviceInventoryPayload: Codable {
+    let type: String
     let identity: Identity
     let resources: Resources
     let power: Power
