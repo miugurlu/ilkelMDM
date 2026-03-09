@@ -38,7 +38,7 @@ public class AppDelegate: NSObject, UIApplicationDelegate{
     }
 
     public func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        let payload = BackgroundPayloadBuilder.build()
+        let payload = DeviceInventoryPayloadBuilder.buildForBackground()
         let tcp = TCPService()
         tcp.send(payload) { success in
             tcp.disconnect()
