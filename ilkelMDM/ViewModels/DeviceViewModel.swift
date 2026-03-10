@@ -41,7 +41,6 @@ final class DeviceViewModel: ObservableObject {
 
     // MARK: - View state (ViewModel’e özel)
 
-    @Published var isUnlocked = false
     @Published private(set) var latitude: Double?
     @Published private(set) var longitude: Double?
     @Published private(set) var altitude: Double?
@@ -68,7 +67,7 @@ final class DeviceViewModel: ObservableObject {
         self.tcpService = tcpService ?? TCPService()
 
         self.deviceMonitor.objectWillChange
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 Task { @MainActor in
                     self?.objectWillChange.send()
@@ -122,7 +121,7 @@ final class DeviceViewModel: ObservableObject {
     // MARK: - TCP Send
 
     private func sendToServer() {
-        let payload = DeviceInventoryPayloadBuilder.build(
+        let payload = DeviceInventoryPayloadBuilder.buildForForeground(
             deviceMonitor: deviceMonitor,
             latitude: latitude,
             longitude: longitude,
@@ -137,7 +136,6 @@ final class DeviceViewModel: ObservableObject {
     var batteryLevelText: String { DeviceDisplayFormatting.batteryLevel(batteryLevel) }
     var batteryStateText: String { DeviceDisplayFormatting.batteryState(batteryState) }
     var thermalStateText: String { DeviceDisplayFormatting.thermalState(thermalState) }
-    var isThermalWarning: Bool { DeviceDisplayFormatting.isThermalWarning(thermalState) }
     var userInterfaceIdiomText: String { DeviceDisplayFormatting.userInterfaceIdiom(userInterfaceIdiom) }
     var orientationText: String { DeviceDisplayFormatting.orientation(orientation) }
     var locationText: String { DeviceDisplayFormatting.location(latitude: latitude, longitude: longitude) }

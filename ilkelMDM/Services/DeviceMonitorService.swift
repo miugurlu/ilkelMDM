@@ -77,16 +77,16 @@ final class DeviceMonitorService: ObservableObject {
         self.localizedModel = device.localizedModel
         self.userInterfaceIdiom = device.userInterfaceIdiom
         self.identifierForVendor = device.identifierForVendor?.uuidString ?? "—"
-        self.machineIdentifier = getMachineIdentifier()
+        self.machineIdentifier = DeviceHelpers.getMachineIdentifier()
         self.isMultiTaskingSupported = device.isMultitaskingSupported
 
         // Resources
         let physicalMemoryBytes = Int64(processInfo.physicalMemory)
-        self.physicalMemoryGB = formatBytes(physicalMemoryBytes)
+        self.physicalMemoryGB = DeviceHelpers.formatBytes(physicalMemoryBytes)
         self.processorCountActive = processInfo.activeProcessorCount
         self.processorCountTotal = processInfo.processorCount
-        self.systemUptimeFormatted = formatUptime(processInfo.systemUptime)
-        let (total, free) = diskSpace(fileManager: fileManager)
+        self.systemUptimeFormatted = DeviceHelpers.formatUptime(processInfo.systemUptime)
+        let (total, free) = DeviceHelpers.diskSpace(fileManager: fileManager)
         self.totalDiskSpaceGB = total
         self.freeDiskSpaceGB = free
 
@@ -161,21 +161,13 @@ final class DeviceMonitorService: ObservableObject {
 
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self else { return }
-            let type = Self.connectionType(from: path)
+            let type = DeviceHelpers.connectionTypeString(from: path)
             Task { @MainActor in
                 self.connectionType = type
             }
         }
         monitor.start(queue: queue)
-        connectionType = Self.connectionType(from: monitor.currentPath)
-    }
-
-    private nonisolated static func connectionType(from path: NWPath) -> String {
-        guard path.status == .satisfied else { return "No Connection" }
-        if path.usesInterfaceType(.wifi) { return "WiFi" }
-        if path.usesInterfaceType(.cellular) { return "Cellular" }
-        if path.usesInterfaceType(.wiredEthernet) { return "Ethernet" }
-        return "Connected"
+        connectionType = DeviceHelpers.connectionTypeString(from: monitor.currentPath)
     }
 
     // MARK: - Uptime
@@ -184,7 +176,7 @@ final class DeviceMonitorService: ObservableObject {
         uptimeTimer?.invalidate()
         uptimeTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             guard let self else { return }
-            let formatted = formatUptime(self.processInfo.systemUptime)
+            let formatted = DeviceHelpers.formatUptime(self.processInfo.systemUptime)
             Task { @MainActor in
                 self.systemUptimeFormatted = formatted
             }

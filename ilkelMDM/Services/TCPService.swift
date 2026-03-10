@@ -21,7 +21,7 @@ final class TCPService {
         let host = NWEndpoint.Host(TCPConfig.host)
         let port = NWEndpoint.Port(rawValue: TCPConfig.port)!
         connection = NWConnection(host: host, port: port, using: .tcp)
-        connection?.stateUpdateHandler = { [weak self] state in
+        connection?.stateUpdateHandler = { state in
             switch state {
             case .ready:
                 print("[TCP] Bağlantı kuruldu: \(TCPConfig.host):\(TCPConfig.port)")

@@ -19,7 +19,7 @@ struct ContentView: View {
             List {
                 identitySection
                 resourcesSection
-                powerAndEnvironmentSection
+                powerSection
                 locationSection
                 networkSection
             }
@@ -63,23 +63,12 @@ struct ContentView: View {
 
     // MARK: - Power & Environment
 
-    private var powerAndEnvironmentSection: some View {
+    private var powerSection: some View {
         Section {
             InfoRow(title: "Battery Level", value: viewModel.batteryLevelText)
             InfoRow(title: "Battery State", value: viewModel.batteryStateText)
             InfoRow(title: "Orientation", value: viewModel.orientationText)
-            HStack {
-                Text("Thermal State")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if viewModel.isThermalWarning {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .padding(.trailing, 4)
-                }
-                Text(viewModel.thermalStateText)
-                    .foregroundColor(viewModel.isThermalWarning ? .orange : .primary)
-            }
+            InfoRow(title: "Thermal State", value: viewModel.thermalStateText)
         } header: {
             Text("Power & Environment")
         }

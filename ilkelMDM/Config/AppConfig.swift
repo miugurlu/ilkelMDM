@@ -13,7 +13,7 @@ enum TCPConfig {
     static let host = "localhost"
     static let port: UInt16 = 8080
     #else
-    static let host = "6.tcp.eu.ngrok.io" //ngrok gelen ngrok tcp 8080
-    static let port: UInt16 = 12400
+    static let host = "2.tcp.eu.ngrok.io" //ngrok tcp 8080
+    static let port: UInt16 = 19708
     #endif
 }

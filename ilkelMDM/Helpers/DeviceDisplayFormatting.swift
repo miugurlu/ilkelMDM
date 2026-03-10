@@ -35,13 +35,6 @@ enum DeviceDisplayFormatting {
         }
     }
 
-    static func isThermalWarning(_ state: ProcessInfo.ThermalState) -> Bool {
-        switch state {
-        case .serious, .critical: return true
-        default: return false
-        }
-    }
-
     static func userInterfaceIdiom(_ idiom: UIUserInterfaceIdiom) -> String {
         switch idiom {
         case .unspecified: return "Unspecified"
